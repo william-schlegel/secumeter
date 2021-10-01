@@ -11,6 +11,7 @@ export default function Home() {
   const [fichier, setFichier] = useState({ url: "" });
   const [dates, setDates] = useState([]);
   const [ids, setIds] = useState([]);
+  const [threshold, setThreshold] = useState(15);
 
   const onDrop = useCallback((acceptedFile) => {
     const file = acceptedFile[0];
@@ -31,7 +32,7 @@ export default function Home() {
       const data = await fetch(fichier.url);
       if (data.ok) {
         const text = await data.text();
-        const lines = text.split("\r\n");
+        const lines = text.replace(/\r\n/g, "\n").split("\n");
         secumeter.clear();
         for (const l of lines) {
           if (l) secumeter.addData(l);
@@ -45,6 +46,16 @@ export default function Home() {
   function handleChangeDate() {
     setIds(secumeter.selectedIds);
   }
+
+  function getValue(id, i) {
+    if (!id) return "-";
+    const v = ids.find((item) => item.k1 === id);
+    const v2 = v.k2.find((item) => item.k === ids[i].k1);
+    if (v2) return v2.value;
+    return "-";
+  }
+
+  console.log(`ids`, ids);
 
   return (
     <div className="p-5">
@@ -61,16 +72,31 @@ export default function Home() {
         </div>
       </div>
       <div className="flex gap-4">
-        <div className="border border-gray-400 rounded-md mb-auto">
-          <h2 className="block text-xl p-3">Import your file here</h2>
-          <div
-            {...getRootProps({
-              className:
-                "flex items-center p-10 m-2 border-2 border-dashed border-gray-300 rounded-md",
-            })}
-          >
-            import csv file
-            <input {...getInputProps()} />
+        <div className="flex flex-col mb-auto gap-5">
+          <div className="border border-gray-400 rounded-md">
+            <h2 className="block text-xl p-3">Import your file here</h2>
+            <div
+              {...getRootProps({
+                className:
+                  "flex items-center p-10 m-2 border-2 border-dashed border-gray-300 rounded-md",
+              })}
+            >
+              import csv file
+              <input {...getInputProps()} />
+            </div>
+          </div>
+          <div className="border border-gray-400 rounded-md">
+            <h2 className="block text-xl p-3">Settings</h2>
+            <div className="flex flex-col gap-4 m-4">
+              <label for="threshold">Highlight threshold</label>
+              <input
+                id="threshold"
+                type="number"
+                value={threshold}
+                onChange={(e) => setThreshold(parseInt(e.target.value))}
+                className="border border-gray-400 rounded px-4 py-2 text-right"
+              />
+            </div>
           </div>
         </div>
         <div className="flex flex-col gap-4">
@@ -79,22 +105,40 @@ export default function Home() {
             <div className="border border-gray-400 rounded-md p-4">
               <table className="table-auto">
                 <thead>
-                  <th>\</th>
-                  {ids.map((id) => (
-                    <th
-                      key={`H-${id[0]}`}
-                      className="border border-gray-400 p-2"
-                    >
-                      {id[0]}
-                    </th>
-                  ))}
+                  <tr>
+                    <th>\</th>
+                    {ids.map((id) => (
+                      <th
+                        key={`H-${id.k1}`}
+                        className="border border-gray-400 p-2"
+                      >
+                        {id.k1}
+                      </th>
+                    ))}
+                  </tr>
                 </thead>
                 <tbody>
-                  {ids.map((id) => (
-                    <tr key={`R-${id[0]}`}>
+                  {ids.map((id, index) => (
+                    <tr key={`R-${id.k1}`}>
                       <td className="border border-gray-400 font-bold p-2">
-                        {id[0]}
+                        {id.k1}
                       </td>
+                      {new Array(index + 1).fill(1).map((a, i) => (
+                        <td className="bg-gray-200">&nbsp;</td>
+                      ))}
+                      {new Array(ids.length - index - 1).fill(1).map((a, i) => {
+                        const v = getValue(id.k1, index + 1 + i);
+                        let bg = "";
+                        if (!isNaN(v)) bg = "bg-green-400";
+                        if (v >= threshold) bg = "bg-red-400";
+                        return (
+                          <td
+                            className={`border border-gray-400 p-2 text-right ${bg}`}
+                          >
+                            {v}
+                          </td>
+                        );
+                      })}
                     </tr>
                   ))}
                 </tbody>
