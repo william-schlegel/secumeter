@@ -55,8 +55,6 @@ export default function Home() {
     return "-";
   }
 
-  console.log(`ids`, ids);
-
   return (
     <div className="p-5">
       <Head>
@@ -88,7 +86,7 @@ export default function Home() {
           <div className="border border-gray-400 rounded-md">
             <h2 className="block text-xl p-3">Settings</h2>
             <div className="flex flex-col gap-4 m-4">
-              <label for="threshold">Highlight threshold</label>
+              <label htmlFor="threshold">Highlight threshold</label>
               <input
                 id="threshold"
                 type="number"
@@ -103,14 +101,17 @@ export default function Home() {
           <ListDate dates={dates} handleChangeDate={handleChangeDate} />
           {ids.length ? (
             <div className="border border-gray-400 rounded-md p-4">
+              <h2 className="block text-xl p-3">
+                Cumulative contact time (in minutes)
+              </h2>
               <table className="table-auto">
                 <thead>
                   <tr>
-                    <th>\</th>
+                    <th>&nbsp;</th>
                     {ids.map((id) => (
                       <th
                         key={`H-${id.k1}`}
-                        className="border border-gray-400 p-2"
+                        className="border border-gray-400 p-2 w-12 text-center"
                       >
                         {id.k1}
                       </th>
@@ -120,20 +121,23 @@ export default function Home() {
                 <tbody>
                   {ids.map((id, index) => (
                     <tr key={`R-${id.k1}`}>
-                      <td className="border border-gray-400 font-bold p-2">
+                      <td className="border border-gray-400 font-bold p-2 w-12 text-center">
                         {id.k1}
                       </td>
                       {new Array(index + 1).fill(1).map((a, i) => (
-                        <td className="bg-gray-200">&nbsp;</td>
+                        <td key={`BLK-${i}`} className="bg-gray-200">
+                          &nbsp;
+                        </td>
                       ))}
                       {new Array(ids.length - index - 1).fill(1).map((a, i) => {
                         const v = getValue(id.k1, index + 1 + i);
                         let bg = "";
-                        if (!isNaN(v)) bg = "bg-green-400";
-                        if (v >= threshold) bg = "bg-red-400";
+                        if (!isNaN(v)) bg = "bg-green-300";
+                        if (v >= threshold) bg = "bg-red-300";
                         return (
                           <td
-                            className={`border border-gray-400 p-2 text-right ${bg}`}
+                            key={`V-${i}`}
+                            className={`border border-gray-400 p-2 text-center ${bg}`}
                           >
                             {v}
                           </td>
