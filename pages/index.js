@@ -1,17 +1,64 @@
 import Head from "next/head";
 import Image from "next/image";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
+import ReactToPrint from "react-to-print";
+import { RadioGroup } from "@headlessui/react";
+
 import { SecumeterData } from "../lib/secumeter";
-import { Listbox } from "@headlessui/react";
+import ListDate from "../components/ListDate";
+import Table from "../components/Table";
 
 const secumeter = new SecumeterData();
+
+const VISU = [
+  {
+    key: "step",
+    Svg: (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="h-6 w-6 transform -rotate-90"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+        />
+      </svg>
+    ),
+  },
+  {
+    key: "table",
+    Svg: (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="h-6 w-6"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+          d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+        />
+      </svg>
+    ),
+  },
+];
 
 export default function Home() {
   const [fichier, setFichier] = useState({ url: "" });
   const [dates, setDates] = useState([]);
   const [ids, setIds] = useState([]);
   const [threshold, setThreshold] = useState(15);
+  const [visu, setVisu] = useState("step");
+  const compRef = useRef();
 
   const onDrop = useCallback((acceptedFile) => {
     const file = acceptedFile[0];
@@ -37,7 +84,7 @@ export default function Home() {
         for (const l of lines) {
           if (l) secumeter.addData(l);
         }
-        setDates(Array.from(secumeter.dates));
+        setDates(Array.from(secumeter.dates).sort((a, b) => a[1] - b[1]));
       }
     };
     if (fichier.url) fetchData();
@@ -45,14 +92,6 @@ export default function Home() {
 
   function handleChangeDate() {
     setIds(secumeter.selectedIds);
-  }
-
-  function getValue(id, i) {
-    if (!id) return "-";
-    const v = ids.find((item) => item.k1 === id);
-    const v2 = v.k2.find((item) => item.k === ids[i].k1);
-    if (v2) return v2.value;
-    return "-";
   }
 
   return (
@@ -94,120 +133,73 @@ export default function Home() {
                 onChange={(e) => setThreshold(parseInt(e.target.value))}
                 className="border border-gray-400 rounded px-4 py-2 text-right"
               />
+              <RadioGroup value={visu} onChange={setVisu}>
+                <div className="flex flex-grow gap-2">
+                  {VISU.map((v) => (
+                    <RadioGroup.Option
+                      className={({ active, checked }) =>
+                        `p-3 border border-gray-300 rounded w-full flex justify-center ${
+                          active ? "ring-2 ring-offset-2 ring-gray-300" : ""
+                        } ${checked ? "bg-gray-300" : "bg-white"}`
+                      }
+                      key={v.key}
+                      value={v.key}
+                    >
+                      {v.Svg}
+                    </RadioGroup.Option>
+                  ))}
+                </div>
+              </RadioGroup>
             </div>
           </div>
+          {ids.length ? (
+            <ReactToPrint
+              trigger={() => (
+                <button className="w-full p-4 bg-blue-600 text-white text-center font-bold text-xl block rounded-md hover:bg-blue-400">
+                  Print
+                </button>
+              )}
+              content={() => compRef.current}
+            />
+          ) : null}
         </div>
         <div className="flex flex-col gap-4">
-          <ListDate dates={dates} handleChangeDate={handleChangeDate} />
+          <ListDate
+            dates={dates}
+            handleChangeDate={handleChangeDate}
+            secumeterData={secumeter}
+          />
           {ids.length ? (
             <div className="border border-gray-400 rounded-md p-4">
               <h2 className="block text-xl p-3">
                 Cumulative contact time (in minutes)
               </h2>
-              <table className="table-auto">
-                <thead>
-                  <tr>
-                    <th>&nbsp;</th>
-                    {ids.map((id) => (
-                      <th
-                        key={`H-${id.k1}`}
-                        className="border border-gray-400 p-2 w-12 text-center"
-                      >
-                        {id.k1}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {ids.map((id, index) => (
-                    <tr key={`R-${id.k1}`}>
-                      <td className="border border-gray-400 font-bold p-2 w-12 text-center">
-                        {id.k1}
-                      </td>
-                      {new Array(index + 1).fill(1).map((a, i) => (
-                        <td key={`BLK-${i}`} className="bg-gray-200">
-                          &nbsp;
-                        </td>
-                      ))}
-                      {new Array(ids.length - index - 1).fill(1).map((a, i) => {
-                        const v = getValue(id.k1, index + 1 + i);
-                        let bg = "";
-                        if (!isNaN(v)) bg = "bg-green-300";
-                        if (v >= threshold) bg = "bg-red-300";
-                        return (
-                          <td
-                            key={`V-${i}`}
-                            className={`border border-gray-400 p-2 text-center ${bg}`}
-                          >
-                            {v}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <Table ids={ids} threshold={threshold} visu={visu} />
             </div>
           ) : null}
+        </div>
+        <div className="hidden">
+          <CompToPrint
+            myRef={compRef}
+            date={secumeter.selectedDate}
+            ids={ids}
+            threshold={threshold}
+            visu={visu}
+          />
         </div>
       </div>
     </div>
   );
 }
 
-function ListDate({ dates, handleChangeDate }) {
-  const [selectedDate, setSelectedDate] = useState([]);
-
-  useEffect(() => {
-    if (Array.isArray(dates) && dates.length) setSelectedDate(dates[0]);
-  }, [dates]);
-
-  useEffect(() => {
-    secumeter.selectDate(selectedDate[1]);
-    handleChangeDate();
-  }, [selectedDate]);
-
-  if (!dates.length) return null;
-
+function CompToPrint({ myRef, ids, date, threshold, visu }) {
+  if (!ids.length) return null;
   return (
-    <div className="border border-gray-400 rounded-md p-4 mr-auto flex items-center">
-      <h2 className="text-xl p-3 mr-4">Select the date</h2>
-      <div className="relative">
-        <Listbox value={selectedDate} onChange={setSelectedDate}>
-          <Listbox.Button className="relative w-full py-2 pl-3 pr-10 text-left border border-gray-400 rounded-md">
-            <span>{selectedDate[0]}</span>
-            <span className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6 text-gray-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M8 9l4-4 4 4m0 6l-4 4-4-4"
-                />
-              </svg>
-            </span>
-          </Listbox.Button>
-          <Listbox.Options className="p-2 absolute left-0 top-12 w-40 h-auto bg-white border border-gray-400 rounded-md">
-            {dates.map((dt) => {
-              return (
-                <Listbox.Option
-                  key={dt[0]}
-                  value={dt}
-                  className="cursor-pointer bg-white hover:bg-gray-300"
-                >
-                  {dt[0]}
-                </Listbox.Option>
-              );
-            })}
-          </Listbox.Options>
-        </Listbox>
-      </div>
+    <div ref={myRef} className="m-10">
+      <p className="mb-4 text-lg text-center pb-2 border-b border-gray-800">
+        Secumeter data analysis for the {new Intl.DateTimeFormat().format(date)}
+      </p>
+      <Table ids={ids} threshold={threshold} visu={visu} />
     </div>
   );
 }
